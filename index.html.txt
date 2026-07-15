@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Inadimplência — MC</title>
+  <link rel="preconnect" href="https://googleapis.com">
+  <link href="https://googleapis.com/css2?family=Oswald:wght=400;500;600;700&family=IBM+Plex+Mono:wght=400;500&display=swap" rel="stylesheet">
+
+  <!-- IMPORTAÇÃO DA BIBLIOTECA OFICIAL DO SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --asphalt: #17161A;
+      --asphalt-2: #221F26;
+      --steel: #2E2B33;
+      --steel-line: #3D3944;
+      --off-white: #EDEAE4;
+      --muted: #9B96A0;
+      --amber: #E8A33D;
+      --rust: #C1443C;
+      --ok-green: #5C8A5C;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--asphalt);
+      color: var(--off-white);
+      font-family: 'IBM Plex Mono', monospace;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 32px 20px 100px;
+      flex: 1;
+      width: 100%;
+    }
+
+    header {
+      border-bottom: 3px solid var(--amber);
+      padding-bottom: 18px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    header .title {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 30px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    header .title span { color: var(--amber); }
+
+    .session-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+
+    .role-badge, .div-badge {
+      font-family: 'Oswald', sans-serif;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      background: var(--steel);
+      border: 1px solid var(--steel-line);
+      white-space: nowrap;
+    }
+    .role-badge.master { color: var(--amber); border-color: var(--amber); }
+    .role-badge.regional { color: #5cb85c; border-color: #5cb85c; }
+    .role-badge.adm { color: var(--off-white); }
+    .div-badge { color: var(--muted); }
+    .count {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      margin-bottom: 24px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--steel-line);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 10px 16px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+    .tab-btn:hover:not(.active) { color: var(--off-white); }
+
+    .panel {
+      background: var(--asphalt-2);
+      border: 1px solid var(--steel-line);
+      border-radius: 4px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .panel h2 {
+      font-family: 'Oswald', sans-serif;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--muted);
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel h2::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: var(--amber);
+      display: inline-block;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-grid .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: var(--steel);
+      border: 1px solid var(--steel-line);
+      border-radius: 3px;
+      color: var(--off-white);
+      padding: 10px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+    }
+
+    input:focus, textarea:focus, select:focus, button:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 1px;
+    }
+
+    textarea { resize: vertical; min-height: 54px; }
+    .btn {
+      border: none;
+      border-radius: 3px;
+      padding: 11px 18px;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: transform 0.08s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: var(--amber); color: #1a1a1a; }
+    .btn-primary:hover { opacity: 0.9; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--steel-line);
+    }
+    .btn-ghost:hover { color: var(--off-white); border-color: var(--muted); }
+
+    .btn-danger {
+      background: #C1443C;
+      color: white;
+    }
+    .btn-danger:hover { background: #a8332c; }
+
+    .row-actions { margin-top: 14px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-bar label { margin: 0; white-space: nowrap; }
+    .filter-bar select { max-width: 220px; }
+
+    .member-card {
+      border: 1px solid var(--steel-line);
+      border-left: 3px solid var(--rust);
+      border-radius: 3px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .member-card .info b {
+      font-family: 'Oswald', sans-serif;
+      font-size: 16px;
+      letter-spacing: 0.3px;
+    }
+
+    .member-card .info .insc {
+      color: var(--amber);
+      font-size: 12px;
+      margin: 2px 0 6px;
+    }
+
+    .member-card .info .motivo {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+
+    .member-card .actions, .user-card .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--steel-line);
+      color: var(--muted);
+      border-radius: 3px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .icon-btn:hover:not(:disabled) { color: var(--off-white); border-color: var(--muted); }
+    .icon-btn.danger:hover:not(:disabled) { color: var(--rust); border-color: var(--rust); }
+    .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .empty-state {
+      text-align: center;
+      padding: 30px 10px;
+      color: var(--muted);
+      font-size: 13px;
+      border: 1px dashed var(--steel-line);
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .notice-box {
+      padding: 16px;
+      border: 1px dashed var(--steel-line);
+      border-radius: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      width: 100%;
+    }
+
+    .report-box {
+      background: var(--steel);
+      border: 1px solid var(--steel-line);
+      border-radius: 3px;
+      padding: 16px;
+      white-space: pre-wrap;
+      font-size: 13.5px;
+      line-height: 1.6;
+      max-height: 340px;
+      overflow-y: auto;
+      color: var(--off-white);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--amber);
+      color: #1a1a1a;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+    .auth-wrap {
+      max-width: 380px;
+      margin: 80px auto;
+      padding: 0 20px;
+    }
+
+    .auth-card {
+      background: var(--asphalt-2);
+      border: 1px solid var(--steel-line);
+      border-top: 3px solid var(--amber);
+      border-radius: 4px;
+      padding: 28px 24px;
+    }
+
+    .auth-card .brand {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .auth-card .brand span { color: var(--amber); }
+
+    .auth-card .sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 22px;
+    }
+
+    .field-error {
+      color: var(--rust);
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .user-card {
+      border: 1px solid var(--steel-line);
+      border-radius: 3px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .user-card .uname {
+      font-family: 'Oswald', sans-serif;
+      font-size: 15px;
+    }
+
+    .user-card .badges { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+    .user-card select.divisao-select, .user-card select.comando-select, .user-card select.role-select { width: auto; min-width: 130px; padding: 6px 8px; font-size: 12px; }
+
+    .divisao-row, .comando-row {
+      border: 1px solid var(--steel-line);
+      border-radius: 3px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .divisao-row .nome, .comando-row .nome { font-family: 'Oswald', sans-serif; font-size: 14px; }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid var(--steel-line);
+      border-radius: 3px;
+      margin-bottom: 8px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .status-row.concluded { border-color: var(--ok-green); background: rgba(92,184,92,0.1); }
+    .status-tag {
+      font-family: 'Oswald', sans-serif;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .status-row.concluded .status-tag { color: var(--ok-green); }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--steel-line);
+      background: var(--asphalt-2);
+      width: 100%;
+      margin-top: auto;
+    }
+
+    .insta-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #E1306C;
+      color: white;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
+      z-index: 99;
+      font-size: 20px;
+    }
+    .insta-btn:hover { transform: scale(1.1); }
+
+    @media (max-width: 520px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .member-card { flex-direction: column; }
+      .member-card .actions { flex-direction: row; }
+      .user-card { flex-direction: column; align-items: stretch; }
+      .user-card .actions { flex-direction: row; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app"></div>
+  <div class="toast" id="toast"></div>
+
+  <footer>
+    Desenvolvido por Coyote do ABC para o mundo
+  </footer>
+
+  <!-- BOTÃO DO INSTAGRAM CONFIGURADO -->
+  <a href="https://www.instagram.com/imc.reg.abc5/" target="_blank" class="insta-btn" title="Siga no Instagram">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-instagram" style="color: white; display: block;">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+    </svg>
+  </a>
+
+<script>
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONFIGURAÇÃO DO SUPABASE
+  // COLE AQUI SUAS CHAVES DO PASSO 3!
+  // ─────────────────────────────────────────────────────────────────────────
+  const SUPABASE_URL = "https://diwzlsjahgebfdwmshwv.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpd3psc2phaGdlYmZkd21zaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNDI3MTgsImV4cCI6MjA5OTcxODcxOH0.bnC3taHfsPtVin92zmpYjKggSXXwR5FyptvtaZDg624";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+
+  let users = [];
+  let members = [];
+  let divisoes = [];
+  let comandos = [];
+  
+  let currentUser = null; // { id, username, role, divisao, comando }
+  let activeTab = 'integrantes';
+  let editingMemberId = null;
+  let divisionFilter = 'all'; 
+  let commandFilter = 'all';
+  let bootStage = 'loading'; // loading | setup | login | app
+
+  const app = document.getElementById('app');
+  const toast = document.getElementById('toast');
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : str;
+    return d.innerHTML;
+  }
+
+  function getDivisaoNome(id) {
+    if (!id) return 'Sem divisão';
+    const d = divisoes.find(x => x.id === id);
+    return d ? d.nome : 'Divisão removida';
+  }
+
+  function getComandoNome(id) {
+    if (!id) return 'Sem Comando';
+    const c = comandos.find(x => x.id === id);
+    return c ? c.nome : 'Comando removido';
+  }
+
+  function divisaoExiste(id) {
+    return !!id && divisoes.some(x => x.id === id);
+  }
+
+  function comandoExiste(id) {
+    return !!id && comandos.some(x => x.id === id);
+  }
+
+  // ---------- Criptografia SHA-256 ----------
+  function randomSalt() {
+    const arr = new Uint8Array(16);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function hashPassword(password, salt) {
+    const enc = new TextEncoder();
+    const data = enc.encode(password + '::' + salt);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ---------- Banco de Dados Compartilhado com Supabase ----------
+  async function loadAll() {
+    try {
+      // 1. Carrega Usuários
+      const { data: uData, error: uErr } = await supabase.from('users').select('*');
+      if (uErr) throw uErr;
+      users = uData || [];
+
+      // 2. Carrega Integrantes/Membros
+      const { data: mData, error: mErr } = await supabase.from('members').select('*');
+      if (mErr) throw mErr;
+      members = mData || [];
+
+      // 3. Carrega Divisões
+      const { data: dData, error: dErr } = await supabase.from('divisoes').select('*');
+      if (dErr) throw dErr;
+      divisoes = dData || [];
+
+      // 4. Carrega Comandos
+      const { data: cData, error: cErr } = await supabase.from('comandos').select('*');
+      if (cErr) throw cErr;
+      comandos = cData || [];
+
+    } catch (e) {
+      console.error("Erro ao carregar dados do Supabase: ", e);
+      showToast('Erro de sincronização com o banco de dados');
+    }
+
+    bootStage = users.length === 0 ? 'setup' : 'login';
+    render();
+  }
+
+  // ---------- Ações de Autenticação ----------
+  async function setupMaster(password) {
+    const salt = randomSalt();
+    const hash = await hashPassword(password, salt);
+    const newUser = { 
+      id: Date.now().toString(), 
+      username: 'programador', 
+      salt, 
+      hash, 
+      role: 'master', 
+      divisao: null, 
+      comando: null 
+    };
+    
+    const { error } = await supabase.from('users').insert([newUser]);
+    if (error) {
+      showToast('Erro ao criar master no Supabase');
+      return;
+    }
+    
+    users.push(newUser);
+    bootStage = 'login';
+    showToast('Usuário "programador" criado!');
+    render();
+  }
+
+  let pendingPasswordUser = null;
+
+  async function login(username, password) {
+    const u = users.find(x => x.username.toLowerCase() === username.trim().toLowerCase());
+    if (!u) return 'Usuário não encontrado';
+    const hash = await hashPassword(password, u.salt);
+    if (hash !== u.hash) return 'Senha incorreta';
+    if (u.role !== 'master' && u.role !== 'regional' && u.role !== 'adm') {
+      return 'Sua conta ainda não tem permissão de acesso. Fale com o mestre ou regional.';
+    }
+    if (u.mustChangePassword) {
+      pendingPasswordUser = u;
+      bootStage = 'forcepass';
+      render();
+      return null;
+    }
+    currentUser = { id: u.id, username: u.username, role: u.role, divisao: u.divisao || null, comando: u.comando || null };
+    bootStage = 'app';
+    activeTab = 'integrantes';
+    divisionFilter = 'all';
+    commandFilter = 'all';
+    render();
+    return null;
+  }
+
+  async function submitForcedPasswordChange(newPassword) {
+    const u = pendingPasswordUser;
+    if (!u) return;
+    const salt = randomSalt();
+    const hash = await hashPassword(newPassword, salt);
+    
+    const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: false }).eq('id', u.id);
+    if (error) {
+      showToast('Erro ao atualizar senha');
+      return;
+    }
+
+    u.salt = salt;
+    u.hash = hash;
+    u.mustChangePassword = false;
+    currentUser = { id: u.id, username: u.username, role: u.role, divisao: u.divisao || null, comando: u.comando || null };
+    pendingPasswordUser = null;
+    bootStage = 'app';
+    activeTab = 'integrantes';
+    divisionFilter = 'all';
+    commandFilter = 'all';
+    render();
+  }
+
+  async function resetUserPassword(id, newPassword) {
+    if (currentUser.role !== 'master') return;
+    const u = users.find(x => x.id === id);
+    if (!u || u.role === 'master') return;
+    const salt = randomSalt();
+    const hash = await hashPassword(newPassword, salt);
+    
+    const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: true }).eq('id', id);
+    if (error) {
+      showToast('Erro ao redefinir senha');
+      return;
+    }
+
+    u.salt = salt;
+    u.hash = hash;
+    u.mustChangePassword = true;
+    render();
+    showToast('Senha redefinida. O usuário vai trocá-la no próximo login.');
+  }
+
+  function logout() {
+    currentUser = null;
+    bootStage = 'login';
+    render();
+  }
+
+  // ---------- Gerenciamento de Comandos (Mestre e Regional) ----------
+  async function addComando(nome) {
+    if (currentUser.role !== 'master' && currentUser.role !== 'regional') return;
+    const trimmed = nome.trim();
+    if (!trimmed) { showToast('Digite um nome para o Comando'); return; }
+    if (comandos.some(c => c.nome.toLowerCase() === trimmed.toLowerCase())) {
+      showToast('Já existe um Comando com esse nome'); return;
+    }
+    
+    const newCmd = { id: Date.now().toString(), nome: trimmed };
+    const { error } = await supabase.from('comandos').insert([newCmd]);
+    if (error) { showToast('Erro ao salvar no banco'); return; }
+
+    comandos.push(newCmd);
+    render();
+    showToast('Comando adicionado');
+  }
+
+  async function removeComando(id) {
+    if (currentUser.role !== 'master') return;
+    const { error } = await supabase.from('comandos').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover do banco'); return; }
+
+    comandos = comandos.filter(c => c.id !== id);
+    render();
+    showToast('Comando removido');
+  }
+
+  // ---------- Gerenciamento de Divisões (Mestre e Regional) ----------
+  async function addDivisao(nome, comandoId) {
+    if (currentUser.role !== 'master' && currentUser.role !== 'regional') return;
+    if (currentUser.role === 'regional' && comandoId !== currentUser.comando) return;
+    const trimmed = nome.trim();
+    if (!trimmed) { showToast('Digite um nome para a divisão'); return; }
+    if (!comandoId) { showToast('Selecione um Comando para vincular a divisão'); return; }
+    if (divisoes.some(d => d.nome.toLowerCase() === trimmed.toLowerCase())) {
+      showToast('Já existe uma divisão com esse nome'); return;
+    }
+
+    const newDiv = { id: Date.now().toString(), nome: trimmed, comandoId: comandoId };
+    const { error } = await supabase.from('divisoes').insert([newDiv]);
+    if (error) { showToast('Erro ao salvar divisão'); return; }
+
+    divisoes.push(newDiv);
+    render();
+    showToast('Divisão adicionada');
+  }
+
+  async function removeDivisao(id) {
+    if (currentUser.role !== 'master' && currentUser.role !== 'regional') return;
+    const d = divisoes.find(x => x.id === id);
+    if (currentUser.role === 'regional' && (!d || d.comandoId !== currentUser.comando)) {
+      showToast('Você só pode remover divisões do seu comando'); return;
+    }
+
+    const { error } = await supabase.from('divisoes').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover divisão'); return; }
+
+    divisoes = divisoes.filter(x => x.id !== id);
+    render();
+    showToast('Divisão removida');
+  }
+
+  // ---------- Gerenciamento de Usuários (Mestre e Regional) ----------
+  async function addUser(username, password, role, divisaoId, comandoId) {
+    if (!username.trim() || !password) return 'Preencha usuário e senha';
+    if (users.some(x => x.username.toLowerCase() === username.trim().toLowerCase())) {
+      return 'Já existe um usuário com esse nome';
+    }
+
+    if (currentUser.role === 'regional' && role !== 'adm' && role !== 'regional') {
+      return 'Você só tem permissão para criar usuários ADM ou Regional';
+    }
+
+    const salt = randomSalt();
+    const hash = await hashPassword(password, salt);
+
+    const newUser = {
+      id: Date.now().toString(),
+      username: username.trim(),
+      salt,
+      hash,
+      role: role || 'user',
+      divisao: divisaoId || null,
+      comando: comandoId || null,
+      emailAdm: '',
+      emailDiretor: '',
+      mustChangePassword: false,
+      relatorioConcluido: false,
+      relatorioConcluidoEm: null,
+      relatorioConcluidoPeriodo: null
+    };
+
+    const { error } = await supabase.from('users').insert([newUser]);
+    if (error) return 'Erro ao criar usuário no banco';
+
+    users.push(newUser);
+    render();
+    showToast('Usuário adicionado');
+    return null;
+  }
+
+  async function toggleRelatorioConcluido() {
+    if (currentUser.role !== 'adm') return;
+    const u = users.find(x => x.id === currentUser.id);
+    if (!u) return;
+
+    let targetStatus = false;
+    let targetEm = null;
+    let targetPeriodo = null;
+
+    if (!isConcluidoAtual(u)) {
+      targetStatus = true;
+      targetEm = Date.now();
+      targetPeriodo = currentPeriodKey();
+    }
+
+    const { error } = await supabase.from('users').update({
+      relatorioConcluido: targetStatus,
+      relatorioConcluidoEm: targetEm,
+      relatorioConcluidoPeriodo: targetPeriodo
+    }).eq('id', u.id);
+
+    if (error) { showToast('Erro ao atualizar status'); return; }
+
+    u.relatorioConcluido = targetStatus;
+    u.relatorioConcluidoEm = targetEm;
+    u.relatorioConcluidoPeriodo = targetPeriodo;
+
+    render();
+    showToast(u.relatorioConcluido ? 'Relatório marcado como concluído!' : 'Marcação de concluído removida');
+  }
+
+  async function updateUserEmail(id, field, value) {
+    const u = users.find(x => x.id === id);
+    if (!u || u.role !== 'adm') return;
+    const allowed = currentUser.role === 'master' || (currentUser.role === 'regional' && u.comando === currentUser.comando);
+    if (!allowed) return;
+
+    const payload = {};
+    payload[field] = value.trim();
+
+    const { error } = await supabase.from('users').update(payload).eq('id', id);
+    if (error) { showToast('Erro ao salvar e-mail'); return; }
+
+    u[field] = value.trim();
+    showToast('E-mail salvo');
+  }
+
+  async function removeUser(id) {
+    const target = users.find(x => x.id === id);
+    if (!target) return;
+    if (target.role === 'master') { showToast('O usuário programador não pode ser removido'); return; }
+    if (currentUser.role === 'regional') {
+      if (target.role === 'regional') { showToast('Só o usuário programador pode remover um Regional'); return; }
+      if (target.comando !== currentUser.comando) { showToast('Você só pode remover contas do seu comando'); return; }
+    }
+
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover usuário'); return; }
+
+    users = users.filter(x => x.id !== id);
+    render();
+    showToast('Usuário removido');
+  }
+
+  // ---------- Filtros Globais de Integrantes ----------
+  function visibleMembers() {
+    if (currentUser.role === 'master') {
+      let filtered = members;
+      if (commandFilter !== 'all') {
+        const divsDoCmd = divisoes.filter(d => d.comandoId === commandFilter).map(d => d.id);
+        filtered = filtered.filter(m => divsDoCmd.includes(m.divisao));
+      }
+      if (divisionFilter !== 'all') {
+        filtered = filtered.filter(m => m.divisao === divisionFilter);
+      }
+      return filtered;
+    }
+    
+    if (currentUser.role === 'regional') {
+      const divsDoCmd = divisoes.filter(d => d.comandoId === currentUser.comando).map(d => d.id);
+      let filtered = members.filter(m => divsDoCmd.includes(m.divisao));
+      if (divisionFilter !== 'all') {
+        filtered = filtered.filter(m => m.divisao === divisionFilter);
+      }
+      return filtered;
+    }
+    
+    return members.filter(m => m.divisao === currentUser.divisao);
+  }
+
+  // ---------- Funções do Integrante ----------
+  function resetMemberForm() {
+    editingMemberId = null;
+    render();
+  }
+
+  async function saveMember(data) {
+    if (!data.nome.trim() || !data.inscricao.trim()) {
+      showToast('Preencha nome e inscrição');
+      return;
+    }
+    if (!data.divisao) {
+      showToast('Selecione uma divisão');
+      return;
+    }
+    if (editingMemberId) {
+      const { error } = await supabase.from('members').update(data).eq('id', editingMemberId);
+      if (error) { showToast('Erro ao editar no banco de dados'); return; }
+
+      const m = members.find(x => x.id === editingMemberId);
+      Object.assign(m, data);
+      showToast('Alterações salvas');
+    } else {
+      const newMember = { id: Date.now().toString(), ...data };
+      const { error } = await supabase.from('members').insert([newMember]);
+      if (error) { showToast('Erro ao cadastrar no banco de dados'); return; }
+
+      members.push(newMember);
+      showToast('Integrante adicionado');
+    }
+    editingMemberId = null;
+    render();
+  }
+
+  async function removeMember(id) {
+    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover integrante do banco'); return; }
+
+    members = members.filter(x => x.id !== id);
+    render();
+    showToast('Integrante removido');
+  }
+
+  // ---------- Montagem do Copia e Cola Avançado (WhatsApp) ----------
+  function buildReportText() {
+    const list = visibleMembers();
+    if (list.length === 0) return '';
+    
+    let tituloContexto = 'GERAL';
+    if (currentUser.role === 'regional') tituloContexto = getComandoNome(currentUser.comando).toUpperCase();
+    if (currentUser.role === 'adm') tituloContexto = getDivisaoNome(currentUser.divisao).toUpperCase();
+    if (currentUser.role === 'master' && commandFilter !== 'all') tituloContexto = getComandoNome(commandFilter).toUpperCase();
+    if (divisionFilter !== 'all') tituloContexto = getDivisaoNome(divisionFilter).toUpperCase();
+
+    let relatorio = `📊 *RELATÓRIO DE INADIMPLÊNCIA — ${tituloContexto}*\n`;
+    relatorio += `📅 *Data:* ${new Date().toLocaleDateString('pt-BR')}\n`;
+    relatorio += `────────────────────\n\n`;
+
+    const corpo = list.map(m => {
+      const d = divisoes.find(x => x.id === m.divisao);
+      const cmdNome = d ? getComandoNome(d.comandoId) : 'Sem Comando';
+      const divNome = d ? d.nome : 'Sem Divisão';
+      
+      const motivoPrevisao = [m.motivo, m.previsao ? `*Previsão:* ${m.previsao}` : ''].filter(Boolean).join(' — ');
+      return `👤 *Nome:* ${m.nome}\n` +
+             `🆔 *Inscrição:* ${m.inscricao}\n` +
+             `🪖 *Comando:* ${cmdNome} / *Divisão:* ${divNome}\n` +
+             `⚠️ *Motivo:* ${motivoPrevisao}`;
+    }).join('\n\n────────────────────\n\n');
+
+    return relatorio + corpo;
+  }
+
+  // ---------- Lembrete de entrega por e-mail (dias 8, 18 e 29) ----------
+  let simularLembrete = false;
+
+  function isReminderDay() {
+    return simularLembrete || [9, 19, 30].includes(new Date().getDate());
+  }
+
+  // ---------- Período de apuração (reseta o "Concluído" automaticamente) ----------
+  function currentPeriodKey() {
+    const d = new Date();
+    const day = d.getDate();
+    let periodIndex = 0;
+    if (day <= 9) periodIndex = 0;
+    else if (day <= 19) periodIndex = 1;
+    else periodIndex = 2;
+    return `${d.getFullYear()}-${d.getMonth()}-${periodIndex}`;
+  }
+
+  function isConcluidoAtual(u) {
+    return !!(u && u.relatorioConcluido && u.relatorioConcluidoPeriodo === currentPeriodKey());
+  }
+
+  function buildReportTextForDivisao(divisaoId) {
+    const list = members.filter(m => m.divisao === divisaoId);
+    if (list.length === 0) return '';
+    return list.map(m => {
+      const motivoPrevisao = [m.motivo, m.previsao ? `previsão ${m.previsao}` : ''].filter(Boolean).join(' - ');
+      return `Nome: ${m.nome}\nInscrição: ${m.inscricao}\nMotivo/Previsão: ${motivoPrevisao}`;
+    }).join('\n\n');
+  }
+
+  function getReminderTargets() {
+    if (currentUser.role === 'master' || currentUser.role === 'regional') {
+      const divisoesEscopo = currentUser.role === 'master'
+        ? divisoes
+        : divisoes.filter(d => d.comandoId === currentUser.comando);
+      const targets = [];
+      divisoesEscopo.forEach(d => {
+        const admsDaDivisao = users.filter(u => u.role === 'adm' && u.divisao === d.id);
+        const emails = [];
+        admsDaDivisao.forEach(u => {
+          if (u.emailAdm) emails.push(u.emailAdm);
+          if (u.emailDiretor) emails.push(u.emailDiretor);
+        });
+        const uniqueEmails = [...new Set(emails)];
+        if (uniqueEmails.length > 0) {
+          targets.push({ divisaoNome: d.nome, emails: uniqueEmails, text: buildReportTextForDivisao(d.id) });
+        }
+      });
+      return targets;
+    }
+    const self = users.find(u => u.id === currentUser.id);
+    if (!self) return [];
+    const emails = [self.emailAdm, self.emailDiretor].filter(Boolean);
+    if (emails.length === 0) return [];
+    return [{ divisaoNome: getDivisaoNome(currentUser.divisao), emails, text: buildReportTextForDivisao(currentUser.divisao) }];
+  }
+
+  function buildMailto(target) {
+    const subject = encodeURIComponent('Lembrete de inadimplência - ' + target.divisaoNome);
+    const body = encodeURIComponent(target.text || 'Nenhum integrante inadimplente nesta divisão no momento.');
+    return `mailto:${target.emails.join(',')}?subject=${subject}&body=${body}`;
+  }
+
+  function reminderBannerHtml() {
+    if (!isReminderDay()) return '';
+    const mainMsg = 'Hoje falta 1 dia para entrega do relatório, por favor preencher as inadimplências o quanto antes';
+    const targets = getReminderTargets();
+    if (targets.length === 0) {
+      return `<div class="panel" style="border-color: var(--amber);"><div class="notice-box">${mainMsg}</div></div>`;
+    }
+    return `<div class="panel" style="border-color: var(--amber);">
+      <h2>${mainMsg}</h2>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        ${targets.map(t => `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span>${escapeHtml(t.divisaoNome)}</span>
+            <a class="btn btn-primary" href="${buildMailto(t)}">Abrir e-mail de lembrete</a>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }
+  function render() {
+    if (bootStage === 'loading') {
+      app.innerHTML = `<div class="auth-wrap"><div class="loading">Carregando dados do Supabase...</div></div>`;
+      return;
+    }
+    if (bootStage === 'setup') return renderSetup();
+    if (bootStage === 'login') return renderLogin();
+    if (bootStage === 'forcepass') return renderForcePassword();
+    return renderMainApp();
+  }
+
+  function renderForcePassword() {
+    app.innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="brand">Controle de <span>Inadimplência</span></div>
+          <div class="sub">Sua senha foi redefinida pelo programador. Crie uma nova senha para continuar.</div>
+          <label for="fp-pass">Nova senha</label>
+          <input id="fp-pass" type="password" style="margin-bottom:12px;" />
+          <label for="fp-pass2">Confirmar nova senha</label>
+          <input id="fp-pass2" type="password" />
+          <div class="field-error" id="fp-error" style="display:none;"></div>
+          <div class="row-actions">
+            <button class="btn btn-primary" id="fp-submit">Salvar nova senha e entrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('fp-submit').addEventListener('click', async () => {
+      const p1 = document.getElementById('fp-pass').value;
+      const p2 = document.getElementById('fp-pass2').value;
+      const errEl = document.getElementById('fp-error');
+      if (!p1) { errEl.textContent = 'Digite a nova senha'; errEl.style.display = 'block'; return; }
+      if (p1 !== p2) { errEl.textContent = 'As senhas não coincidem'; errEl.style.display = 'block'; return; }
+      await submitForcedPasswordChange(p1);
+    });
+  }
+
+  function renderSetup() {
+    app.innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="brand">Controle de <span>Inadimplência</span></div>
+          <div class="sub">Primeiro acesso — Crie as credenciais do Programador</div>
+          
+          <label style="margin-bottom:12px; display:block; color:var(--amber);">O usuário padrão será criado como: <b>programador</b></label>
+          
+          <label for="su-pass">Senha do Programador</label>
+          <input id="su-pass" type="password" placeholder="Crie uma senha" style="margin-bottom:12px;" />
+          
+          <label for="su-pass2">Confirmar senha</label>
+          <input id="su-pass2" type="password" placeholder="Repita a senha" />
+          
+          <div class="field-error" id="su-error" style="display:none;"></div>
+          <div class="row-actions">
+            <button class="btn btn-primary" id="su-submit">Criar Usuário Programador</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('su-submit').addEventListener('click', async () => {
+      const pass = document.getElementById('su-pass').value;
+      const pass2 = document.getElementById('su-pass2').value;
+      const errEl = document.getElementById('su-error');
+      
+      if (!pass) { errEl.textContent = 'Preencha a senha'; errEl.style.display = 'block'; return; }
+      if (pass !== pass2) { errEl.textContent = 'As senhas não coincidem'; errEl.style.display = 'block'; return; }
+      
+      await setupMaster(pass);
+    });
+  }
+
+  function renderLogin() {
+    app.innerHTML = `
+      <div class="auth-wrap">
+        <div class="auth-card">
+          <div class="brand">Controle de <span>Inadimplência</span></div>
+          <div class="sub">Acesso restrito à diretoria do MC</div>
+          <label for="lg-user">Usuário</label>
+          <input id="lg-user" type="text" style="margin-bottom:12px;" placeholder="Ex: programador" />
+          <label for="lg-pass">Senha</label>
+          <input id="lg-pass" type="password" />
+          <div class="field-error" id="lg-error" style="display:none;"></div>
+          <div class="row-actions">
+            <button class="btn btn-primary" id="lg-submit">Entrar</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const submit = async () => {
+      const username = document.getElementById('lg-user').value;
+      const pass = document.getElementById('lg-pass').value;
+      const errEl = document.getElementById('lg-error');
+      const err = await login(username, pass);
+      if (err) { errEl.textContent = err; errEl.style.display = 'block'; }
+    };
+    document.getElementById('lg-submit').addEventListener('click', submit);
+    document.getElementById('lg-pass').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  }
+
+  function renderMainApp() {
+    const isMaster = currentUser.role === 'master';
+    const isRegional = currentUser.role === 'regional';
+    const isAdm = currentUser.role === 'adm';
+    
+    let roleLabel = 'ADM';
+    if (isMaster) roleLabel = 'Programador'; 
+    if (isRegional) roleLabel = `Regional — ${escapeHtml(getComandoNome(currentUser.comando))}`;
+
+    app.innerHTML = `
+      <div class="wrap">
+        <header>
+          <div class="title">Controle de <span>Inadimplência</span></div>
+          <div class="session-bar">
+            <span class="role-badge ${currentUser.role}">${roleLabel}</span>
+            ${isAdm ? `<span class="div-badge">${escapeHtml(getDivisaoNome(currentUser.divisao))}</span>` : ''}
+            <span>${escapeHtml(currentUser.username)}</span>
+            <button class="icon-btn" id="sim-btn">${simularLembrete ? 'Parar simulação' : 'Simular lembrete'}</button>
+            <button class="icon-btn" id="logout-btn">Sair</button>
+          </div>
+        </header>
+        <div class="count">${visibleMembers().length === 1 ? '1 integrante' : visibleMembers().length + ' integrantes'}</div>
+        ${reminderBannerHtml()}
+
+        <div class="tabs">
+          <button class="tab-btn ${activeTab === 'integrantes' ? 'active' : ''}" data-tab="integrantes">Integrantes</button>
+          <button class="tab-btn ${activeTab === 'relatorio' ? 'active' : ''}" data-tab="relatorio">Relatório</button>
+          ${!isAdm ? `<button class="tab-btn ${activeTab === 'usuarios' ? 'active' : ''}" data-tab="usuarios">Usuários</button>` : ''}
+          ${isMaster || isRegional ? `<button class="tab-btn ${activeTab === 'divisoes' ? 'active' : ''}" data-tab="divisoes">Divisões</button>` : ''}
+          ${isMaster || isRegional ? `<button class="tab-btn ${activeTab === 'comandos' ? 'active' : ''}" data-tab="comandos">Comandos</button>` : ''}
+        </div>
+
+        <div id="tab-content"></div>
+      </div>
+    `;
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    document.getElementById('sim-btn').addEventListener('click', () => { simularLembrete = !simularLembrete; render(); });
+    app.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => { activeTab = btn.dataset.tab; editingMemberId = null; render(); });
+    });
+
+    const content = document.getElementById('tab-content');
+    if (activeTab === 'integrantes') renderIntegrantesTab(content);
+    if (activeTab === 'relatorio') renderRelatorioTab(content);
+    if (activeTab === 'usuarios' && !isAdm) renderUsuariosTab(content);
+    if (activeTab === 'divisoes' && (isMaster || isRegional)) renderDivisoesTab(content);
+    if (activeTab === 'comandos' && (isMaster || isRegional)) renderComandosTab(content);
+  }
+
+  function divisaoOptionsHtml(selectedId) {
+    const isRegional = currentUser.role === 'regional';
+    let disponiveis = divisoes;
+    if (isRegional) {
+      disponiveis = divisoes.filter(d => d.comandoId === currentUser.comando);
+    }
+    return disponiveis.map(d => `<option value="${d.id}" ${d.id === selectedId ? 'selected' : ''}>${escapeHtml(d.nome)} (${escapeHtml(getComandoNome(d.comandoId))})</option>`).join('');
+  }
+
+  function renderIntegrantesTab(content) {
+    const isMaster = currentUser.role === 'master';
+    const isRegional = currentUser.role === 'regional';
+    const isAdm = currentUser.role === 'adm';
+    const editing = editingMemberId ? members.find(m => m.id === editingMemberId) : null;
+
+    if (isAdm && !divisaoExiste(currentUser.divisao)) {
+      content.innerHTML = `<div class="panel"><div class="notice-box">Sua conta ainda não tem uma divisão válida atribuída. Fale com o mestre ou regional.</div></div>`;
+      return;
+    }
+
+    if (!isAdm && divisoes.length === 0) {
+      content.innerHTML = `<div class="panel"><div class="notice-box">Nenhuma divisão cadastrada. Vá até a aba "Divisões" e cadastre a primeira.</div></div>`;
+      return;
+    }
+
+    const list = visibleMembers();
+
+    content.innerHTML = `
+      <div class="panel">
+        <h2>${editing ? 'Editando integrante' : 'Novo integrante'}</h2>
+        <div class="form-grid">
+          <div class="full">
+            <label for="m-nome">Nome do integrante</label>
+            <input id="m-nome" type="text" placeholder="Ex: Carlos Silva" value="${editing ? escapeHtml(editing.nome) : ''}" />
+          </div>
+          <div>
+            <label for="m-insc">Número de inscrição</label>
+            <input id="m-insc" type="text" placeholder="Ex: 0042" value="${editing ? escapeHtml(editing.inscricao) : ''}" />
+          </div>
+          <div>
+            <label for="m-prev">Previsão de pagamento</label>
+            <input id="m-prev" type="text" placeholder="Ex: 20/07" value="${editing ? escapeHtml(editing.previsao || '') : ''}" />
+          </div>
+          ${!isAdm ? `
+          <div class="full">
+            <label for="m-divisao">Divisão</label>
+            <select id="m-divisao">
+              <option value="">Selecione uma divisão</option>
+              ${divisaoOptionsHtml(editing ? editing.divisao : null)}
+            </select>
+          </div>` : ''}
+          <div class="full">
+            <label for="m-motivo">Motivo</label>
+            <textarea id="m-motivo" placeholder="Ex: Atraso salarial">${editing ? escapeHtml(editing.motivo || '') : ''}</textarea>
+          </div>
+        </div>
+        <div class="row-actions">
+          ${editing ? '<button class="btn btn-ghost" id="m-cancel">Cancelar edição</button>' : ''}
+          <button class="btn btn-primary" id="m-save">${editing ? 'Salvar alterações' : 'Adicionar integrante'}</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Integrantes inadimplentes</h2>
+        
+        <div class="filter-bar">
+          ${isMaster ? `
+            <label for="cmd-filter">Filtrar Comando:</label>
+            <select id="cmd-filter">
+              <option value="all" ${commandFilter === 'all' ? 'selected' : ''}>Todos os Comandos</option>
+              ${comandos.map(c => `<option value="${c.id}" ${commandFilter === c.id ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('')}
+            </select>
+          ` : ''}
+          
+          ${isMaster || isRegional ? `
+            <label for="div-filter">Filtrar Divisão:</label>
+            <select id="div-filter">
+              <option value="all" ${divisionFilter === 'all' ? 'selected' : ''}>Todas as divisões</option>
+              ${(isRegional ? divisoes.filter(d => d.comandoId === currentUser.comando) : divisoes)
+                .map(d => `<option value="${d.id}" ${divisionFilter === d.id ? 'selected' : ''}>${escapeHtml(d.nome)}</option>`).join('')}
+            </select>
+          ` : ''}
+        </div>
+
+        <div id="m-list"></div>
+        ${list.length === 0 ? '<div class="empty-state">Nenhum integrante cadastrado nesta visão.</div>' : ''}
+      </div>
+    `;
+
+    const cmdFil = document.getElementById('cmd-filter');
+    if (cmdFil) cmdFil.addEventListener('change', () => { commandFilter = cmdFil.value; divisionFilter = 'all'; render(); });
+
+    const divFil = document.getElementById('div-filter');
+    if (divFil) divFil.addEventListener('change', () => { divisionFilter = divFil.value; render(); });
+
+    const listEl = document.getElementById('m-list');
+    list.forEach(m => {
+      const d = divisoes.find(x => x.id === m.divisao);
+      const labelLocal = d ? `${d.nome} (${getComandoNome(d.comandoId)})` : 'Sem local';
+      const motivoPrevisao = [m.motivo, m.previsao ? `previsão ${m.previsao}` : ''].filter(Boolean).join(' — ');
+      
+      const card = document.createElement('div');
+      card.className = 'member-card';
+      card.innerHTML = `
+        <div class="info">
+          <b>${escapeHtml(m.nome)}</b>
+          <div class="insc">Inscrição ${escapeHtml(m.inscricao)}</div>
+          <div class="motivo">${escapeHtml(motivoPrevisao || '—')}</div>
+          <span class="div-badge">${escapeHtml(labelLocal)}</span>
+        </div>
+        <div class="actions">
+          <button class="icon-btn" data-edit="${m.id}">Editar</button>
+          <button class="icon-btn danger" data-remove="${m.id}">Remover</button>
+        </div>
+      `;
+      listEl.appendChild(card);
+    });
+
+    listEl.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => { editingMemberId = b.dataset.edit; render(); }));
+    listEl.querySelectorAll('[data-remove]').forEach(b => b.addEventListener('click', () => removeMember(b.dataset.remove)));
+
+    document.getElementById('m-save').addEventListener('click', () => {
+      const divisaoValue = isAdm ? currentUser.divisao : document.getElementById('m-divisao').value;
+      saveMember({
+        nome: document.getElementById('m-nome').value,
+        inscricao: document.getElementById('m-insc').value,
+        previsao: document.getElementById('m-prev').value,
+        motivo: document.getElementById('m-motivo').value,
+        divisao: divisaoValue,
+      });
+    });
+    
+    const cancelBtn = document.getElementById('m-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', resetMemberForm);
+  }
+
+  function statusEntregaHtml() {
+    if (currentUser.role === 'adm') return '';
+    const divisoesEscopo = currentUser.role === 'master'
+      ? (commandFilter !== 'all' ? divisoes.filter(d => d.comandoId === commandFilter) : divisoes)
+      : divisoes.filter(d => d.comandoId === currentUser.comando);
+    if (divisoesEscopo.length === 0) return '';
+    const rows = divisoesEscopo.map(d => {
+      const admU = users.find(u => u.role === 'adm' && u.divisao === d.id);
+      const concluded = isConcluidoAtual(admU);
+      return `<div class="status-row ${concluded ? 'concluded' : ''}">
+        <span>${escapeHtml(d.nome)}</span>
+        <span style="color:var(--muted); font-size:11px;">${admU ? escapeHtml(admU.username) : 'sem ADM'}</span>
+        <span class="status-tag">${concluded ? '✓ Concluído' : 'Pendente'}</span>
+      </div>`;
+    }).join('');
+    return `<div class="panel"><h2>Status de entrega por divisão</h2>${rows}</div>`;
+  }
+
+  function renderRelatorioTab(content) {
+    const isMaster = currentUser.role === 'master';
+    const isRegional = currentUser.role === 'regional';
+    const isAdm = currentUser.role === 'adm';
+
+    if (isAdm && !divisaoExiste(currentUser.divisao)) {
+      content.innerHTML = `<div class="panel"><div class="notice-box">Sua conta ainda não tem uma divisão válida atribuída. Fale com o mestre.</div></div>`;
+      return;
+    }
+
+    const selfUser = isAdm ? users.find(u => u.id === currentUser.id) : null;
+    const text = buildReportText();
+    content.innerHTML = `
+      ${!isAdm ? statusEntregaHtml() : ''}
+      <div class="panel">
+        <h2>Relatório para envio (WhatsApp)</h2>
+        
+        <div class="filter-bar">
+          ${isMaster ? `
+            <label for="cmd-filter-r">Comando:</label>
+            <select id="cmd-filter-r">
+              <option value="all" ${commandFilter === 'all' ? 'selected' : ''}>Todos os Comandos</option>
+              ${comandos.map(c => `<option value="${c.id}" ${commandFilter === c.id ? 'selected' : ''}>${escapeHtml(c.nome)}</option>`).join('')}
+            </select>
+          ` : ''}
+          
+          ${isMaster || isRegional ? `
+            <label for="div-filter-r">Divisão:</label>
+            <select id="div-filter-r">
+              <option value="all" ${divisionFilter === 'all' ? 'selected' : ''}>Todas as divisões</option>
+              ${(isRegional ? divisoes.filter(d => d.comandoId === currentUser.comando) : divisoes)
+                .map(d => `<option value="${d.id}" ${divisionFilter === d.id ? 'selected' : ''}>${escapeHtml(d.nome)}</option>`).join('')}
+            </select>
+          ` : ''}
+        </div>
+
+        <div class="report-box">${escapeHtml(text) || 'Sem integrantes inadimplentes para esta seleção.'}</div>
+        <div class="row-actions" style="${isAdm ? 'justify-content: space-between;' : ''}">
+          ${isAdm ? `<button class="btn ${isConcluidoAtual(selfUser) ? 'btn-ghost' : 'btn-primary'}" id="concluido-btn">${isConcluidoAtual(selfUser) ? '✓ Concluído — clique para desfazer' : 'Marcar como concluído'}</button>` : ''}
+          <button class="btn btn-primary" id="copy-btn">Copiar relatório formatado</button>
+        </div>
+      </div>
+    `;
+
+    const cmdFilR = document.getElementById('cmd-filter-r');
+    if (cmdFilR) cmdFilR.addEventListener('change', () => { commandFilter = cmdFilR.value; divisionFilter = 'all'; render(); });
+
+    const divFilR = document.getElementById('div-filter-r');
+    if (divFilR) divFilR.addEventListener('change', () => { divisionFilter = divFilR.value; render(); });
+
+    const concluidoBtn = document.getElementById('concluido-btn');
+    if (concluidoBtn) concluidoBtn.addEventListener('click', toggleRelatorioConcluido);
+
+    document.getElementById('copy-btn').addEventListener('click', () => copyText(text));
+  }
+
+  async function copyText(text) {
+    if (!text) { showToast('Nada para copiar'); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Copiado para o WhatsApp!');
+      return;
+    } catch (e) { /* tenta método de reserva abaixo */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(ok ? 'Copiado para o WhatsApp!' : 'Não foi possível copiar');
+    } catch (e2) {
+      showToast('Não foi possível copiar');
+    }
+  }
+
+  function renderUsuariosTab(content) {
+    const isMaster = currentUser.role === 'master';
+    const isRegional = currentUser.role === 'regional';
+    
+    content.innerHTML = `
+      <div class="panel">
+        <h2>Adicionar usuário</h2>
+        <div class="form-grid">
+          <div>
+            <label for="u-user">Usuário</label>
+            <input id="u-user" type="text" placeholder="Nome de usuário" />
+          </div>
+          <div>
+            <label for="u-pass">Senha</label>
+            <input id="u-pass" type="password" placeholder="Senha inicial" />
+          </div>
+          <div class="full">
+            <label for="u-role">Cargo / Nível</label>
+            <select id="u-role">
+              <option value="adm" selected>ADM (Gerencia Divisão)</option>
+              <option value="regional">Regional (Gerencia Comando)</option>
+            </select>
+          </div>
+          
+          <div class="full" id="u-local-context">
+          </div>
+        </div>
+        <div class="field-error" id="u-error" style="display:none;"></div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="u-save">Adicionar usuário</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Contas cadastradas</h2>
+        <div id="u-list"></div>
+      </div>
+    `;
+
+    const roleSel = document.getElementById('u-role');
+    const contextDiv = document.getElementById('u-local-context');
+
+    function updateContextFields() {
+      if (roleSel.value === 'regional') {
+        if (isRegional) {
+          contextDiv.innerHTML = `
+            <label>Comando vinculado</label>
+            <div class="notice-box" style="padding:10px;">${escapeHtml(getComandoNome(currentUser.comando))} (seu comando)</div>
+          `;
+        } else {
+          contextDiv.innerHTML = `
+            <label for="u-comando">Comando Vinculado</label>
+            <select id="u-comando">
+              <option value="">Selecione um Comando</option>
+              ${comandos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('')}
+            </select>
+          `;
+        }
+      } else {
+        contextDiv.innerHTML = `
+          <label for="u-divisao">Divisão Vinculada</label>
+          <select id="u-divisao">
+            <option value="">Selecione uma Divisão</option>
+            ${divisaoOptionsHtml(null)}
+          </select>
+        `;
+      }
+    }
+    
+    roleSel.addEventListener('change', updateContextFields);
+    updateContextFields();
+
+    const listEl = document.getElementById('u-list');
+    
+    let visiveisUsuarios = users;
+    if (isRegional) {
+      visiveisUsuarios = users.filter(u => u.comando === currentUser.comando && u.role !== 'master');
+    }
+
+    visiveisUsuarios.forEach(u => {
+      let labelCargo = u.role === 'master' ? 'Programador' : (u.role === 'regional' ? 'Regional' : 'ADM');
+      let labelLocal = 'Todas as divisões';
+      
+      if (u.role === 'regional') labelLocal = `Comando: ${getComandoNome(u.comando)}`;
+      if (u.role === 'adm') labelLocal = `Divisão: ${getDivisaoNome(u.divisao)}`;
+
+      const canRemove = u.role !== 'master' && u.id !== currentUser.id &&
+        (isMaster || (isRegional && u.role !== 'regional' && u.comando === currentUser.comando));
+      const canEditEmails = u.role === 'adm' && (isMaster || (isRegional && u.comando === currentUser.comando));
+      const canResetPassword = isMaster && u.role !== 'master';
+
+      const card = document.createElement('div');
+      card.className = 'user-card';
+      card.innerHTML = `
+        <div>
+          <div class="uname">${escapeHtml(u.username)}</div>
+          <div class="badges">
+            <span class="role-badge ${u.role}">${labelCargo}</span>
+            <span class="div-badge">${escapeHtml(labelLocal)}</span>
+            ${u.mustChangePassword ? `<span class="div-badge" style="color:var(--amber);">Aguardando troca de senha</span>` : ''}
+          </div>
+        </div>
+        <div class="actions" style="flex-direction: row; align-items:center;">
+          ${canResetPassword ? `<button class="icon-btn" data-reset-pass="${u.id}" data-username="${escapeHtml(u.username)}">Redefinir senha</button>` : ''}
+          <button class="icon-btn danger" data-remove-user="${u.id}" ${canRemove ? '' : 'disabled'}>Remover</button>
+        </div>
+        ${canEditEmails ? `
+        <div style="flex-basis:100%; display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+          <input type="email" data-email-field="emailAdm" data-user="${u.id}" placeholder="E-mail do ADM" value="${escapeHtml(u.emailAdm || '')}" style="font-size:12px; padding:6px 8px; flex:1; min-width:160px;" />
+          <input type="email" data-email-field="emailDiretor" data-user="${u.id}" placeholder="E-mail do Diretor de divisão" value="${escapeHtml(u.emailDiretor || '')}" style="font-size:12px; padding:6px 8px; flex:1; min-width:160px;" />
+        </div>` : ''}
+      `;
+      listEl.appendChild(card);
+    });
+
+    listEl.querySelectorAll('[data-remove-user]').forEach(b => b.addEventListener('click', () => {
+      if (!b.disabled) removeUser(b.dataset.removeUser);
+    }));
+    listEl.querySelectorAll('[data-email-field]').forEach(inp => inp.addEventListener('change', () => updateUserEmail(inp.dataset.user, inp.dataset.emailField, inp.value)));
+    listEl.querySelectorAll('[data-reset-pass]').forEach(b => b.addEventListener('click', () => {
+      const novaSenha = prompt('Nova senha temporária para ' + b.dataset.username + ':');
+      if (novaSenha) resetUserPassword(b.dataset.resetPass, novaSenha);
+    }));
+
+    document.getElementById('u-save').addEventListener('click', async () => {
+      const username = document.getElementById('u-user').value;
+      const pass = document.getElementById('u-pass').value;
+      const role = roleSel.value;
+      
+      let divisaoId = null;
+      let comandoId = null;
+
+      if (role === 'regional') {
+        if (isRegional) {
+          comandoId = currentUser.comando;
+        } else {
+          comandoId = document.getElementById('u-comando').value;
+          if (!comandoId) { showToast('Selecione um Comando'); return; }
+        }
+      } else {
+        divisaoId = document.getElementById('u-divisao').value;
+        if (!divisaoId) { showToast('Selecione uma Divisão'); return; }
+        const d = divisoes.find(x => x.id === divisaoId);
+        if (d) comandoId = d.comandoId;
+      }
+
+      const errEl = document.getElementById('u-error');
+      const err = await addUser(username, pass, role, divisaoId, comandoId);
+      if (err) { errEl.textContent = err; errEl.style.display = 'block'; }
+    });
+  }
+
+  function renderDivisoesTab(content) {
+    content.innerHTML = `
+      <div class="panel">
+        <h2>Nova divisão</h2>
+        <div class="form-grid">
+          <div>
+            <label for="d-nome">Nome da divisão</label>
+            <input id="d-nome" type="text" placeholder="Ex: Divisão Sul" />
+          </div>
+          <div>
+            <label for="d-comando">Vincular ao Comando</label>
+            ${currentUser.role === 'regional' ? `
+              <div class="notice-box" style="padding:10px;">${escapeHtml(getComandoNome(currentUser.comando))} (seu comando)</div>
+              <input type="hidden" id="d-comando" value="${currentUser.comando || ''}" />
+            ` : `
+              <select id="d-comando">
+                <option value="">Selecione um Comando</option>
+                ${comandos.map(c => `<option value="${c.id}">${escapeHtml(c.nome)}</option>`).join('')}
+              </select>
+            `}
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="d-save">Adicionar divisão</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Divisões cadastradas</h2>
+        <div id="d-list"></div>
+        ${divisoes.length === 0 ? '<div class="empty-state">Nenhuma divisão cadastrada ainda.</div>' : ''}
+      </div>
+    `;
+
+    const listEl = document.getElementById('d-list');
+    let divsVisiveis = divisoes;
+    if (currentUser.role === 'regional') {
+      divsVisiveis = divisoes.filter(d => d.comandoId === currentUser.comando);
+    }
+
+    divsVisiveis.forEach(d => {
+      const card = document.createElement('div');
+      card.className = 'divisao-row';
+      card.innerHTML = `
+        <span class="nome">${escapeHtml(d.nome)} — <small style="color:var(--muted);">${escapeHtml(getComandoNome(d.comandoId))}</small></span>
+        <button class="icon-btn danger" data-remove-div="${d.id}">Remover</button>
+      `;
+      listEl.appendChild(card);
+    });
+
+    listEl.querySelectorAll('[data-remove-div]').forEach(b => {
+      b.addEventListener('click', () => removeDivisao(b.dataset.removeDiv));
+    });
+
+    document.getElementById('d-save').addEventListener('click', () => {
+      const nomeInp = document.getElementById('d-nome');
+      const cmdSel = document.getElementById('d-comando');
+      addDivisao(nomeInp.value, cmdSel.value);
+    });
+  }
+
+  function renderComandosTab(content) {
+    const isMaster = currentUser.role === 'master';
+    
+    content.innerHTML = `
+      <div class="panel">
+        <h2>Novo Comando</h2>
+        <div class="form-grid">
+          <div class="full">
+            <label for="c-nome">Nome do Comando</label>
+            <input id="c-nome" type="text" placeholder="Ex: Comando Alpha" />
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="c-save">Adicionar Comando</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Comandos cadastrados</h2>
+        <div id="c-list"></div>
+        ${comandos.length === 0 ? '<div class="empty-state">Nenhum comando cadastrado ainda.</div>' : ''}
+      </div>
+    `;
+
+    const listEl = document.getElementById('c-list');
+    comandos.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'comando-row';
+      card.innerHTML = `
+        <span class="nome">${escapeHtml(c.nome)}</span>
+        <button class="icon-btn danger" data-remove-cmd="${c.id}" ${!isMaster ? 'disabled' : ''}>Remover</button>
+      `;
+      listEl.appendChild(card);
+    });
+
+    listEl.querySelectorAll('[data-remove-cmd]').forEach(b => {
+      b.addEventListener('click', () => { if (!b.disabled) removeComando(b.dataset.removeCmd); });
+    });
+
+    document.getElementById('c-save').addEventListener('click', () => {
+      const nomeInp = document.getElementById('c-nome');
+      addComando(nomeInp.value);
+      nomeInp.value = '';
+    });
+  }
+
+  loadAll();
+</script>
+</body>
+</html>
