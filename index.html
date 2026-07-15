@@ -486,10 +486,24 @@
   // CONFIGURAÇÃO DO SUPABASE
   // COLE AQUI SUAS CHAVES DO PASSO 3!
   // ─────────────────────────────────────────────────────────────────────────
+ <!-- ... código anterior (HTML, botão do Instagram, etc.) ... -->
+
+<script>
+{ // <--- ADICIONE ESTA CHAVE AQUI PARA ABRIR O BLOCO
+
   const SUPABASE_URL = "https://diwzlsjahgebfdwmshwv.supabase.co"; 
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpd3psc2phaGdlYmZkd21zaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNDI3MTgsImV4cCI6MjA5OTcxODcxOH0.bnC3taHfsPtVin92zmpYjKggSXXwR5FyptvtaZDg624";
 
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ... todo o restante do seu código JavaScript continua igualzinho aqui no meio ...
+
+  loadAll();
+
+} // <--- ADICIONE ESTA CHAVE AQUI PARA FECHAR O BLOCO
+</script>
+</body>
+</html>
 
   let users = [];
   let members = [];
