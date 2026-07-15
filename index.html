@@ -7,6 +7,9 @@
   <link rel="preconnect" href="https://googleapis.com">
   <link href="https://googleapis.com/css2?family=Oswald:wght=400;500;600;700&family=IBM+Plex+Mono:wght=400;500&display=swap" rel="stylesheet">
 
+  <!-- IMPORTAÇÃO DA BIBLIOTECA OFICIAL DO SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
     :root {
       --asphalt: #17161A;
@@ -479,10 +482,14 @@
   </a>
 
 <script>
-  const USERS_KEY = 'auth_users_v2';
-  const MEMBERS_KEY = 'membros_inadimplentes_v2';
-  const DIVISOES_KEY = 'divisoes_v2';
-  const COMANDOS_KEY = 'comandos_v2';
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONFIGURAÇÃO DO SUPABASE
+  // COLE AQUI SUAS CHAVES DO PASSO 3!
+  // ─────────────────────────────────────────────────────────────────────────
+  const SUPABASE_URL = "https://diwzlsjahgebfdwmshwv.supabase.co"; 
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpd3psc2phaGdlYmZkd21zaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNDI3MTgsImV4cCI6MjA5OTcxODcxOH0.bnC3taHfsPtVin92zmpYjKggSXXwR5FyptvtaZDg624";
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let users = [];
   let members = [];
@@ -545,28 +552,59 @@
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // ---------- Banco de Dados Compartilhado ----------
+  // ---------- Banco de Dados Compartilhado com Supabase ----------
   async function loadAll() {
-    try { const r = await window.storage.get(USERS_KEY, true); users = r ? JSON.parse(r.value) : []; } catch (e) { users = []; }
-    try { const r = await window.storage.get(MEMBERS_KEY, true); members = r ? JSON.parse(r.value) : []; } catch (e) { members = []; }
-    try { const r = await window.storage.get(DIVISOES_KEY, true); divisoes = r ? JSON.parse(r.value) : []; } catch (e) { divisoes = []; }
-    try { const r = await window.storage.get(COMANDOS_KEY, true); comandos = r ? JSON.parse(r.value) : []; } catch (e) { comandos = []; }
+    try {
+      // 1. Carrega Usuários
+      const { data: uData, error: uErr } = await supabase.from('users').select('*');
+      if (uErr) throw uErr;
+      users = uData || [];
+
+      // 2. Carrega Integrantes/Membros
+      const { data: mData, error: mErr } = await supabase.from('members').select('*');
+      if (mErr) throw mErr;
+      members = mData || [];
+
+      // 3. Carrega Divisões
+      const { data: dData, error: dErr } = await supabase.from('divisoes').select('*');
+      if (dErr) throw dErr;
+      divisoes = dData || [];
+
+      // 4. Carrega Comandos
+      const { data: cData, error: cErr } = await supabase.from('comandos').select('*');
+      if (cErr) throw cErr;
+      comandos = cData || [];
+
+    } catch (e) {
+      console.error("Erro ao carregar dados do Supabase: ", e);
+      showToast('Erro de sincronização com o banco de dados');
+    }
 
     bootStage = users.length === 0 ? 'setup' : 'login';
     render();
   }
 
-  async function saveUsers() { try { await window.storage.set(USERS_KEY, JSON.stringify(users), true); } catch (e) { showToast('Erro ao salvar usuários'); } }
-  async function saveMembers() { try { await window.storage.set(MEMBERS_KEY, JSON.stringify(members), true); } catch (e) { showToast('Erro ao salvar'); } }
-  async function saveDivisoes() { try { await window.storage.set(DIVISOES_KEY, JSON.stringify(divisoes), true); } catch (e) { showToast('Erro ao salvar divisões'); } }
-  async function saveComandos() { try { await window.storage.set(COMANDOS_KEY, JSON.stringify(comandos), true); } catch (e) { showToast('Erro ao salvar comandos'); } }
-  
   // ---------- Ações de Autenticação ----------
   async function setupMaster(password) {
     const salt = randomSalt();
     const hash = await hashPassword(password, salt);
-    users.push({ id: Date.now().toString(), username: 'programador', salt, hash, role: 'master', divisao: null, comando: null });
-    await saveUsers();
+    const newUser = { 
+      id: Date.now().toString(), 
+      username: 'programador', 
+      salt, 
+      hash, 
+      role: 'master', 
+      divisao: null, 
+      comando: null 
+    };
+    
+    const { error } = await supabase.from('users').insert([newUser]);
+    if (error) {
+      showToast('Erro ao criar master no Supabase');
+      return;
+    }
+    
+    users.push(newUser);
     bootStage = 'login';
     showToast('Usuário "programador" criado!');
     render();
@@ -602,10 +640,16 @@
     if (!u) return;
     const salt = randomSalt();
     const hash = await hashPassword(newPassword, salt);
+    
+    const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: false }).eq('id', u.id);
+    if (error) {
+      showToast('Erro ao atualizar senha');
+      return;
+    }
+
     u.salt = salt;
     u.hash = hash;
     u.mustChangePassword = false;
-    await saveUsers();
     currentUser = { id: u.id, username: u.username, role: u.role, divisao: u.divisao || null, comando: u.comando || null };
     pendingPasswordUser = null;
     bootStage = 'app';
@@ -621,10 +665,16 @@
     if (!u || u.role === 'master') return;
     const salt = randomSalt();
     const hash = await hashPassword(newPassword, salt);
+    
+    const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: true }).eq('id', id);
+    if (error) {
+      showToast('Erro ao redefinir senha');
+      return;
+    }
+
     u.salt = salt;
     u.hash = hash;
     u.mustChangePassword = true;
-    await saveUsers();
     render();
     showToast('Senha redefinida. O usuário vai trocá-la no próximo login.');
   }
@@ -643,16 +693,22 @@
     if (comandos.some(c => c.nome.toLowerCase() === trimmed.toLowerCase())) {
       showToast('Já existe um Comando com esse nome'); return;
     }
-    comandos.push({ id: Date.now().toString(), nome: trimmed });
-    await saveComandos();
+    
+    const newCmd = { id: Date.now().toString(), nome: trimmed };
+    const { error } = await supabase.from('comandos').insert([newCmd]);
+    if (error) { showToast('Erro ao salvar no banco'); return; }
+
+    comandos.push(newCmd);
     render();
     showToast('Comando adicionado');
   }
 
   async function removeComando(id) {
     if (currentUser.role !== 'master') return;
+    const { error } = await supabase.from('comandos').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover do banco'); return; }
+
     comandos = comandos.filter(c => c.id !== id);
-    await saveComandos();
     render();
     showToast('Comando removido');
   }
@@ -667,8 +723,12 @@
     if (divisoes.some(d => d.nome.toLowerCase() === trimmed.toLowerCase())) {
       showToast('Já existe uma divisão com esse nome'); return;
     }
-    divisoes.push({ id: Date.now().toString(), nome: trimmed, comandoId: comandoId });
-    await saveDivisoes();
+
+    const newDiv = { id: Date.now().toString(), nome: trimmed, comandoId: comandoId };
+    const { error } = await supabase.from('divisoes').insert([newDiv]);
+    if (error) { showToast('Erro ao salvar divisão'); return; }
+
+    divisoes.push(newDiv);
     render();
     showToast('Divisão adicionada');
   }
@@ -679,8 +739,11 @@
     if (currentUser.role === 'regional' && (!d || d.comandoId !== currentUser.comando)) {
       showToast('Você só pode remover divisões do seu comando'); return;
     }
+
+    const { error } = await supabase.from('divisoes').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover divisão'); return; }
+
     divisoes = divisoes.filter(x => x.id !== id);
-    await saveDivisoes();
     render();
     showToast('Divisão removida');
   }
@@ -699,7 +762,7 @@
     const salt = randomSalt();
     const hash = await hashPassword(password, salt);
 
-    users.push({
+    const newUser = {
       id: Date.now().toString(),
       username: username.trim(),
       salt,
@@ -713,9 +776,12 @@
       relatorioConcluido: false,
       relatorioConcluidoEm: null,
       relatorioConcluidoPeriodo: null
-    });
+    };
 
-    await saveUsers();
+    const { error } = await supabase.from('users').insert([newUser]);
+    if (error) return 'Erro ao criar usuário no banco';
+
+    users.push(newUser);
     render();
     showToast('Usuário adicionado');
     return null;
@@ -725,16 +791,29 @@
     if (currentUser.role !== 'adm') return;
     const u = users.find(x => x.id === currentUser.id);
     if (!u) return;
-    if (isConcluidoAtual(u)) {
-      u.relatorioConcluido = false;
-      u.relatorioConcluidoEm = null;
-      u.relatorioConcluidoPeriodo = null;
-    } else {
-      u.relatorioConcluido = true;
-      u.relatorioConcluidoEm = Date.now();
-      u.relatorioConcluidoPeriodo = currentPeriodKey();
+
+    let targetStatus = false;
+    let targetEm = null;
+    let targetPeriodo = null;
+
+    if (!isConcluidoAtual(u)) {
+      targetStatus = true;
+      targetEm = Date.now();
+      targetPeriodo = currentPeriodKey();
     }
-    await saveUsers();
+
+    const { error } = await supabase.from('users').update({
+      relatorioConcluido: targetStatus,
+      relatorioConcluidoEm: targetEm,
+      relatorioConcluidoPeriodo: targetPeriodo
+    }).eq('id', u.id);
+
+    if (error) { showToast('Erro ao atualizar status'); return; }
+
+    u.relatorioConcluido = targetStatus;
+    u.relatorioConcluidoEm = targetEm;
+    u.relatorioConcluidoPeriodo = targetPeriodo;
+
     render();
     showToast(u.relatorioConcluido ? 'Relatório marcado como concluído!' : 'Marcação de concluído removida');
   }
@@ -744,8 +823,14 @@
     if (!u || u.role !== 'adm') return;
     const allowed = currentUser.role === 'master' || (currentUser.role === 'regional' && u.comando === currentUser.comando);
     if (!allowed) return;
+
+    const payload = {};
+    payload[field] = value.trim();
+
+    const { error } = await supabase.from('users').update(payload).eq('id', id);
+    if (error) { showToast('Erro ao salvar e-mail'); return; }
+
     u[field] = value.trim();
-    await saveUsers();
     showToast('E-mail salvo');
   }
 
@@ -757,8 +842,11 @@
       if (target.role === 'regional') { showToast('Só o usuário programador pode remover um Regional'); return; }
       if (target.comando !== currentUser.comando) { showToast('Você só pode remover contas do seu comando'); return; }
     }
+
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover usuário'); return; }
+
     users = users.filter(x => x.id !== id);
-    await saveUsers();
     render();
     showToast('Usuário removido');
   }
@@ -805,21 +893,29 @@
       return;
     }
     if (editingMemberId) {
+      const { error } = await supabase.from('members').update(data).eq('id', editingMemberId);
+      if (error) { showToast('Erro ao editar no banco de dados'); return; }
+
       const m = members.find(x => x.id === editingMemberId);
       Object.assign(m, data);
       showToast('Alterações salvas');
     } else {
-      members.push({ id: Date.now().toString(), ...data });
+      const newMember = { id: Date.now().toString(), ...data };
+      const { error } = await supabase.from('members').insert([newMember]);
+      if (error) { showToast('Erro ao cadastrar no banco de dados'); return; }
+
+      members.push(newMember);
       showToast('Integrante adicionado');
     }
     editingMemberId = null;
-    await saveMembers();
     render();
   }
 
   async function removeMember(id) {
+    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (error) { showToast('Erro ao remover integrante do banco'); return; }
+
     members = members.filter(x => x.id !== id);
-    await saveMembers();
     render();
     showToast('Integrante removido');
   }
@@ -939,7 +1035,7 @@
   }
   function render() {
     if (bootStage === 'loading') {
-      app.innerHTML = `<div class="auth-wrap"><div class="loading">Carregando dados...</div></div>`;
+      app.innerHTML = `<div class="auth-wrap"><div class="loading">Carregando dados do Supabase...</div></div>`;
       return;
     }
     if (bootStage === 'setup') return renderSetup();
