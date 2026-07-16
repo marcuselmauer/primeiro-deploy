@@ -497,7 +497,7 @@
       throw new Error('Supabase JS não carregou (window.supabase indefinido).');
     }
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let users = [];
     let members = [];
@@ -564,22 +564,22 @@
     async function loadAll() {
       try {
         // 1. Carrega Usuários
-        const { data: uData, error: uErr } = await supabase.from('users').select('*');
+        const { data: uData, error: uErr } = await sb.from('users').select('*');
         if (uErr) throw uErr;
         users = uData || [];
 
         // 2. Carrega Integrantes/Membros
-        const { data: mData, error: mErr } = await supabase.from('members').select('*');
+        const { data: mData, error: mErr } = await sb.from('members').select('*');
         if (mErr) throw mErr;
         members = mData || [];
 
         // 3. Carrega Divisões
-        const { data: dData, error: dErr } = await supabase.from('divisoes').select('*');
+        const { data: dData, error: dErr } = await sb.from('divisoes').select('*');
         if (dErr) throw dErr;
         divisoes = dData || [];
 
         // 4. Carrega Comandos
-        const { data: cData, error: cErr } = await supabase.from('comandos').select('*');
+        const { data: cData, error: cErr } = await sb.from('comandos').select('*');
         if (cErr) throw cErr;
         comandos = cData || [];
 
@@ -606,7 +606,7 @@
         comando: null 
       };
       
-      const { error } = await supabase.from('users').insert([newUser]);
+      const { error } = await sb.from('users').insert([newUser]);
       if (error) {
         showToast('Erro ao criar master no Supabase');
         return;
@@ -649,7 +649,7 @@
       const salt = randomSalt();
       const hash = await hashPassword(newPassword, salt);
       
-      const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: false }).eq('id', u.id);
+      const { error } = await sb.from('users').update({ salt, hash, mustChangePassword: false }).eq('id', u.id);
       if (error) {
         showToast('Erro ao atualizar senha');
         return;
@@ -674,7 +674,7 @@
       const salt = randomSalt();
       const hash = await hashPassword(newPassword, salt);
       
-      const { error } = await supabase.from('users').update({ salt, hash, mustChangePassword: true }).eq('id', id);
+      const { error } = await sb.from('users').update({ salt, hash, mustChangePassword: true }).eq('id', id);
       if (error) {
         showToast('Erro ao redefinir senha');
         return;
@@ -703,7 +703,7 @@
       }
       
       const newCmd = { id: Date.now().toString(), nome: trimmed };
-      const { error } = await supabase.from('comandos').insert([newCmd]);
+      const { error } = await sb.from('comandos').insert([newCmd]);
       if (error) { showToast('Erro ao salvar no banco'); return; }
 
       comandos.push(newCmd);
@@ -713,7 +713,7 @@
 
     async function removeComando(id) {
       if (currentUser.role !== 'master') return;
-      const { error } = await supabase.from('comandos').delete().eq('id', id);
+      const { error } = await sb.from('comandos').delete().eq('id', id);
       if (error) { showToast('Erro ao remover do banco'); return; }
 
       comandos = comandos.filter(c => c.id !== id);
@@ -733,7 +733,7 @@
       }
 
       const newDiv = { id: Date.now().toString(), nome: trimmed, comandoId: comandoId };
-      const { error } = await supabase.from('divisoes').insert([newDiv]);
+      const { error } = await sb.from('divisoes').insert([newDiv]);
       if (error) { showToast('Erro ao salvar divisão'); return; }
 
       divisoes.push(newDiv);
@@ -748,7 +748,7 @@
         showToast('Você só pode remover divisões do seu comando'); return;
       }
 
-      const { error } = await supabase.from('divisoes').delete().eq('id', id);
+      const { error } = await sb.from('divisoes').delete().eq('id', id);
       if (error) { showToast('Erro ao remover divisão'); return; }
 
       divisoes = divisoes.filter(x => x.id !== id);
@@ -786,7 +786,7 @@
         relatorioConcluidoPeriodo: null
       };
 
-      const { error } = await supabase.from('users').insert([newUser]);
+      const { error } = await sb.from('users').insert([newUser]);
       if (error) return 'Erro ao criar usuário no banco';
 
       users.push(newUser);
@@ -810,7 +810,7 @@
         targetPeriodo = currentPeriodKey();
       }
 
-      const { error } = await supabase.from('users').update({
+      const { error } = await sb.from('users').update({
         relatorioConcluido: targetStatus,
         relatorioConcluidoEm: targetEm,
         relatorioConcluidoPeriodo: targetPeriodo
@@ -835,7 +835,7 @@
       const payload = {};
       payload[field] = value.trim();
 
-      const { error } = await supabase.from('users').update(payload).eq('id', id);
+      const { error } = await sb.from('users').update(payload).eq('id', id);
       if (error) { showToast('Erro ao salvar e-mail'); return; }
 
       u[field] = value.trim();
@@ -851,7 +851,7 @@
         if (target.comando !== currentUser.comando) { showToast('Você só pode remover contas do seu comando'); return; }
       }
 
-      const { error } = await supabase.from('users').delete().eq('id', id);
+      const { error } = await sb.from('users').delete().eq('id', id);
       if (error) { showToast('Erro ao remover usuário'); return; }
 
       users = users.filter(x => x.id !== id);
@@ -901,7 +901,7 @@
         return;
       }
       if (editingMemberId) {
-        const { error } = await supabase.from('members').update(data).eq('id', editingMemberId);
+        const { error } = await sb.from('members').update(data).eq('id', editingMemberId);
         if (error) { showToast('Erro ao editar no banco de dados'); return; }
 
         const m = members.find(x => x.id === editingMemberId);
@@ -909,7 +909,7 @@
         showToast('Alterações salvas');
       } else {
         const newMember = { id: Date.now().toString(), ...data };
-        const { error } = await supabase.from('members').insert([newMember]);
+        const { error } = await sb.from('members').insert([newMember]);
         if (error) { showToast('Erro ao cadastrar no banco de dados'); return; }
 
         members.push(newMember);
@@ -920,7 +920,7 @@
     }
 
     async function removeMember(id) {
-      const { error } = await supabase.from('members').delete().eq('id', id);
+      const { error } = await sb.from('members').delete().eq('id', id);
       if (error) { showToast('Erro ao remover integrante do banco'); return; }
 
       members = members.filter(x => x.id !== id);
