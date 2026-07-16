@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle de Inadimplência — MC</title>
-  <link rel="preconnect" href="https://googleapis.com">
-  <link href="https://googleapis.com/css2?family=Oswald:wght=400;500;600;700&family=IBM+Plex+Mono:wght=400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <!-- IMPORTAÇÃO DA BIBLIOTECA OFICIAL DO SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -485,6 +486,16 @@
   <script>
     const SUPABASE_URL = "https://diwzlsjahgebfdwmshwv.supabase.co"; 
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRpd3psc2phaGdlYmZkd21zaHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxNDI3MTgsImV4cCI6MjA5OTcxODcxOH0.bnC3taHfsPtVin92zmpYjKggSXXwR5FyptvtaZDg624";
+
+    if (!window.supabase) {
+      document.getElementById('app').innerHTML =
+        '<div style="max-width:600px;margin:60px auto;padding:20px;font-family:sans-serif;color:#EDEAE4;background:#221F26;border:1px solid #C1443C;border-radius:6px;">' +
+        '<h2 style="color:#C1443C;margin-top:0;">Não foi possível carregar a biblioteca do Supabase</h2>' +
+        '<p>O script "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" não carregou. Isso costuma acontecer por bloqueador de anúncios, firewall/rede corporativa, ou alguma política de segurança (CSP) no domínio.</p>' +
+        '<p>Tente recarregar a página, desativar bloqueadores de conteúdo, ou testar em outra rede/navegador.</p>' +
+        '</div>';
+      throw new Error('Supabase JS não carregou (window.supabase indefinido).');
+    }
 
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
