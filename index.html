@@ -560,28 +560,54 @@
       return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
+    // ---------- Normalização de IDs vindos do Supabase ----------
+    // O Supabase/Postgres pode devolver colunas de id com um tipo diferente
+    // do que foi usado para criá-las (ex: número em vez de string) ou com
+    // variações de maiúsculas/minúsculas no nome da coluna. Isso fazia
+    // comparações como `d.comandoId === commandFilter` falharem mesmo
+    // quando o valor "lógico" era o mesmo, resultando em "Comando removido"
+    // e filtros que zeravam a lista. Esta função força todos os campos de
+    // id/relacionamento para string e tenta casar variações do nome da coluna.
+    function toIdStr(v) {
+      if (v === null || v === undefined || v === '') return null;
+      return String(v);
+    }
+
+    function normalizeRow(row, idFields) {
+      const copy = { ...row };
+      idFields.forEach(field => {
+        if (copy[field] === undefined) {
+          const lowerTarget = field.toLowerCase();
+          const foundKey = Object.keys(copy).find(k => k.toLowerCase() === lowerTarget);
+          if (foundKey !== undefined) copy[field] = copy[foundKey];
+        }
+        copy[field] = toIdStr(copy[field]);
+      });
+      return copy;
+    }
+
     // ---------- Banco de Dados Compartilhado com Supabase ----------
     async function loadAll() {
       try {
         // 1. Carrega Usuários
         const { data: uData, error: uErr } = await sb.from('users').select('*');
         if (uErr) throw uErr;
-        users = uData || [];
+        users = (uData || []).map(u => normalizeRow(u, ['id', 'divisao', 'comando']));
 
         // 2. Carrega Integrantes/Membros
         const { data: mData, error: mErr } = await sb.from('members').select('*');
         if (mErr) throw mErr;
-        members = mData || [];
+        members = (mData || []).map(m => normalizeRow(m, ['id', 'divisao']));
 
         // 3. Carrega Divisões
         const { data: dData, error: dErr } = await sb.from('divisoes').select('*');
         if (dErr) throw dErr;
-        divisoes = dData || [];
+        divisoes = (dData || []).map(d => normalizeRow(d, ['id', 'comandoId']));
 
         // 4. Carrega Comandos
         const { data: cData, error: cErr } = await sb.from('comandos').select('*');
         if (cErr) throw cErr;
-        comandos = cData || [];
+        comandos = (cData || []).map(c => normalizeRow(c, ['id']));
 
       } catch (e) {
         console.error("Erro ao carregar dados do Supabase: ", e);
